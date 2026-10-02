@@ -1,0 +1,66 @@
+﻿<!DOCTYPE html>
+<html lang="es">
+	<head>
+		<meta charset="UTF-8">
+			<meta name="viewport" content="width=device-width, initial-scale=1.0">
+				<title>Demo Lector de Carnet</title>
+				
+				<!-- Tesseract.js para OCR -->
+				
+				<script src="https://cdn.jsdelivr.net/npm/tesseract.js@5/dist/tesseract.min.js"></script>
+			</head>
+	<body>
+		<h1>Demo: Lector de Carnet de Identidad</h1>
+
+		<!-- Área de captura -->
+		<div>
+			<h2>1. Capturar imagen del carnet</h2>
+			<input type="file" id="inputImagen" accept="image/*">
+				<button id="btnCamara">Usar Cámara</button>
+				<video id="video" width="300" style="display:none;" autoplay=""></video>
+				<button id="btnCapturar" style="display:none;">Capturar</button>
+				<canvas id="canvas" style="display:none;"></canvas>
+			</div>
+
+		<!-- Imagen capturada -->
+		<div>
+			<h2>2. Imagen capturada</h2>
+			<img id="imagenPreview" width="300" style="border: 1px solid #ccc;">
+    </div>
+
+		<!-- Botón paraprocesar -->
+		<div>
+			<button id="btnProcesar" disabled="">Procesar con OCR</button>
+			<p id="estado">Esperando imagen...</p>
+		</div>
+		
+
+		<!-- Formulario con datos extraídos -->
+		<div>
+			<h2>3. Datos extraídos</h2>
+			<form id="formulario">
+				<label>RUT:</label>
+				<br>
+					<input type="text" id="rut" name="rut">
+						<br>
+							<br>
+
+								<label>Nombre:</label>
+								<br>
+									<input type="text" id="nombre" name="nombre">
+										<br>
+											<br>
+
+												<label>Fecha de Nacimiento:</label>
+												<br>
+													<input type="text" id="fechaNacimiento" name="fechaNacimiento">
+														<br>
+															<br>
+
+																<button type="submit">Enviar formulario</button>
+															</form>
+		</div>
+
+		<script src="app.js"></script>
+	</body>
+</html>
