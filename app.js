@@ -1,3 +1,4 @@
+// 1. Referencias a los elementos del HTML
 const inputImagen = document.getElementById('inputImagen');
 const btnCamara = document.getElementById('btnCamara');
 const btnCapturar = document.getElementById('btnCapturar');
@@ -9,6 +10,7 @@ const estado = document.getElementById('estado');
 
 let streamCamara = null;
 
+// 2. Manejo de subida de archivo
 inputImagen.addEventListener('change', (e) => {
     const archivo = e.target.files[0];
     if (archivo) {
@@ -22,6 +24,7 @@ inputImagen.addEventListener('change', (e) => {
     }
 });
 
+// 3. Manejo de la camara
 btnCamara.addEventListener('click', async () => {
     try {
         streamCamara = await navigator.mediaDevices.getUserMedia({ 
@@ -53,7 +56,7 @@ btnCapturar.addEventListener('click', () => {
     btnCamara.style.display = 'block';
 });
 
-// Funcion para escalar y mejorar la imagen
+// 4. Funcion para escalar y mejorar la imagen
 function mejorarImagen(src, escala = 3) {
     return new Promise((resolve) => {
         const img = new Image();
@@ -61,13 +64,11 @@ function mejorarImagen(src, escala = 3) {
             const canvas = document.createElement('canvas');
             const ctx = canvas.getContext('2d');
             
-            // Escalar la imagen (3x mas grande para mejor OCR)
             canvas.width = img.width * escala;
             canvas.height = img.height * escala;
             
             ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
             
-            // Mejorar contraste
             const imageData = ctx.getImageData(0, 0, canvas.width, canvas.height);
             const data = imageData.data;
             
@@ -86,6 +87,7 @@ function mejorarImagen(src, escala = 3) {
     });
 }
 
+// 5. Validacion flexible de carnet
 function validarEsCarnet(texto) {
     const palabrasClave = [
         'REGISTRO', 'CIVIL', 'IDENTIDAD', 'REPUBLICA', 'CHILE',
@@ -105,12 +107,13 @@ function validarEsCarnet(texto) {
     };
 }
 
+// 6. Procesamiento OCR
 btnProcesar.addEventListener('click', async () => {
     estado.innerText = "Mejorando imagen...";
     btnProcesar.disabled = true;
+    document.getElementById('confirmacion').style.display = 'none';
 
     try {
-        // Mejorar la imagen antes del OCR
         const imagenMejorada = await mejorarImagen(imagenPreview.src, 3);
         
         estado.innerText = "Procesando con OCR...";
@@ -124,17 +127,19 @@ btnProcesar.addEventListener('click', async () => {
         console.log("Coincidencias:", validacion.cantidad, validacion.palabras);
         
         if (validacion.cantidad < 2) {
-            estado.innerText = `No se detecto un carnet. Solo encontro: ${validacion.palabras.join(', ') || 'nada'}. Intenta con una foto mas clara y cercana.`;
+            estado.innerText = `No se detecto un carnet. Solo encontro: ${validacion.palabras.join(', ') || 'nada'}. Intenta con una foto mas clara.`;
             btnProcesar.disabled = false;
             return;
         }
 
         const rut = extraerRUT(text);
         const fecha = extraerFecha(text);
-        const nombre = extraerNombre(text);
+        const nombresData = extraerNombres(text);
 
         document.getElementById('rut').value = rut || "No detectado";
-        document.getElementById('nombre').value = nombre || "No detectado";
+        document.getElementById('nombre').value = nombresData.nombres || "No detectado";
+        document.getElementById('apellidoPaterno').value = nombresData.apPaterno || "No detectado";
+        document.getElementById('apellidoMaterno').value = nombresData.apMaterno || "No detectado";
         document.getElementById('fechaNacimiento').value = fecha || "No detectado";
 
         estado.innerText = "Carnet detectado. Datos extraidos.";
@@ -145,6 +150,34 @@ btnProcesar.addEventListener('click', async () => {
         btnProcesar.disabled = false;
     }
 });
+
+// 7. Manejo del envio del formulario
+document.getElementById('formulario').addEventListener('submit', (e) => {
+    e.preventDefault();
+    
+    const rut = document.getElementById('rut').value;
+    const nombre = document.getElementById('nombre').value;
+    const apPat = document.getElementById('apellidoPaterno').value;
+    const apMat = document.getElementById('apellidoMaterno').value;
+    const fecha = document.getElementById('fechaNacimiento').value;
+    
+    if (rut === 'No detectado' || nombre === 'No detectado' || fecha === 'No detectado') {
+        alert('Hay campos sin detectar. Intenta con una imagen mas clara.');
+        return;
+    }
+    
+    document.getElementById('confRut').textContent = rut;
+    document.getElementById('confNombre').textContent = nombre;
+    document.getElementById('confApPat').textContent = apPat || 'No detectado';
+    document.getElementById('confApMat').textContent = apMat || 'No detectado';
+    document.getElementById('confFecha').textContent = fecha;
+    document.getElementById('confirmacion').style.display = 'block';
+    
+    console.log('Datos enviados:', { rut, nombre, apPat, apMat, fecha });
+    document.getElementById('confirmacion').scrollIntoView({ behavior: 'smooth' });
+});
+
+// --- Funciones de Extraccion ---
 
 function extraerRUT(texto) {
     const regex = /\b\d{1,2}\.?\d{3}\.?\d{3}-?[0-9kK]\b/;
@@ -158,11 +191,39 @@ function extraerFecha(texto) {
     return match ? match[0] : null;
 }
 
-function extraerNombre(texto) {
-    const regex = /NOMBRES\s*[:.]?\s*([A-ZÁÉÍÓÚÑ\s]+?)(?=SEXO|NACIONALIDAD|FECHA|DOMICILIO|$)/i;
-    const match = texto.match(regex);
-    if (match && match[1]) {
-        return match[1].trim();
+function extraerNombres(texto) {
+    let apellidos = "";
+    let nombres = "";
+    
+    // Buscar apellidos (suelen estar bajo la etiqueta APELLIDOS)
+    const regexApellidos = /APELLIDOS\s*[:.]?\s*([A-ZÁÉÍÓÚÑ\s]+?)(?=NOMBRES|SEXO|NACIONALIDAD|FECHA|$)/i;
+    const matchApellidos = texto.match(regexApellidos);
+    if (matchApellidos && matchApellidos[1]) {
+        apellidos = matchApellidos[1].trim();
     }
-    return null;
+    
+    // Buscar nombres (suelen estar bajo la etiqueta NOMBRES)
+    const regexNombres = /NOMBRES\s*[:.]?\s*([A-ZÁÉÍÓÚÑ\s]+?)(?=SEXO|NACIONALIDAD|FECHA|DOMICILIO|$)/i;
+    const matchNombres = texto.match(regexNombres);
+    if (matchNombres && matchNombres[1]) {
+        nombres = matchNombres[1].trim();
+    }
+    
+    // Separar apellidos en Paterno y Materno
+    const partesApellidos = apellidos.split(/\s+/);
+    let apPaterno = "";
+    let apMaterno = "";
+    
+    if (partesApellidos.length >= 2) {
+        apPaterno = partesApellidos[0];
+        apMaterno = partesApellidos.slice(1).join(' ');
+    } else if (partesApellidos.length === 1) {
+        apPaterno = partesApellidos[0];
+    }
+    
+    return {
+        nombres: nombres || apellidos, // Si no encuentra nombres, usa los apellidos como fallback
+        apPaterno: apPaterno,
+        apMaterno: apMaterno
+    };
 }
